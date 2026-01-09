@@ -1,0 +1,154 @@
+C51 COMPILER V9.54   TIMER                                                                 11/17/2025 21:07:18 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE TIMER
+OBJECT MODULE PLACED IN .\Objects\Timer.obj
+COMPILER INVOKED BY: D:\Keil\C51\BIN\C51.EXE Timer.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\Timer.
+                    -lst) TABS(2) OBJECT(.\Objects\Timer.obj)
+
+line level    source
+
+   1          #include <STC89C5xRC.H>
+   2          #include "Timer.h"
+   3          
+   4          // 全局变量
+   5          unsigned int Timer_Count = 0;      // 计时器秒计数
+   6          unsigned char Clock_Hour = 12;     // 时钟小时
+   7          unsigned char Clock_Minute = 0;    // 时钟分钟
+   8          unsigned char Clock_Second = 0;    // 时钟秒钟
+   9          
+  10          // 计时器专用变量
+  11          static unsigned int timer_ms_count = 0;  // 计时器毫秒计数
+  12          static unsigned char timer_running = 0;  // 计时器运行状态：0=停止，1=运行
+  13          
+  14          // 时钟专用变量  
+  15          static unsigned int clock_ms_count = 0;  // 时钟毫秒计数
+  16          
+  17          /**
+  18            * @brief  定时器0初始化函数
+  19            */
+  20          void Timer0_Init(void)
+  21          {
+  22   1          // 设置定时器0为16位定时器模式
+  23   1          TMOD &= 0xF0;   // 清零定时器0的模式位
+  24   1          TMOD |= 0x01;   // 设置定时器0为模式1（16位定时器）
+  25   1          
+  26   1          // 设置定时器初值，50ms定时
+  27   1          TL0 = 0x00;     // 定时器低8位
+  28   1          TH0 = 0x4C;     // 定时器高8位，50ms @11.0592MHz
+  29   1          
+  30   1          ET0 = 1;        // 使能定时器0中断
+  31   1          EA = 1;         // 开启总中断
+  32   1          TR0 = 1;        // 启动定时器0
+  33   1          
+  34   1          // 初始化变量
+  35   1          timer_ms_count = 0;
+  36   1          clock_ms_count = 0;
+  37   1          timer_running = 0;  // 初始状态：计时器停止
+  38   1      }
+  39          
+  40          /**
+  41            * @brief  定时器0中断服务函数
+  42            */
+  43          void Timer0_Routine() interrupt 1
+  44          {
+  45   1          // 重装定时器初值
+  46   1          TL0 = 0x00;
+  47   1          TH0 = 0x4C;
+  48   1          
+  49   1          // 计时器毫秒计数（只在计时器运行时计数）
+  50   1          if(timer_running)
+  51   1          {
+  52   2              timer_ms_count++;
+  53   2          }
+  54   1          
+C51 COMPILER V9.54   TIMER                                                                 11/17/2025 21:07:18 PAGE 2   
+
+  55   1          // 时钟毫秒计数（始终计数）
+  56   1          clock_ms_count++;
+  57   1          
+  58   1          // 计时器功能：每20次中断（1秒）计数一次
+  59   1          if(timer_running && timer_ms_count >= 20)  // 20 * 50ms = 1000ms = 1秒
+  60   1          {
+  61   2              timer_ms_count = 0;   // 重置毫秒计数
+  62   2              Timer_Count++;        // 秒计数加1
+  63   2          }
+  64   1          
+  65   1          // 时钟功能：每20次中断（1秒）更新一次时间
+  66   1          if(clock_ms_count >= 20)  // 1秒
+  67   1          {
+  68   2              clock_ms_count = 0;   // 重置毫秒计数
+  69   2              Clock_Second++;       // 秒钟加1
+  70   2              
+  71   2              // 秒钟进位处理
+  72   2              if(Clock_Second >= 60)
+  73   2              {
+  74   3                  Clock_Second = 0;     // 秒钟归零
+  75   3                  Clock_Minute++;       // 分钟加1
+  76   3                  
+  77   3                  // 分钟进位处理
+  78   3                  if(Clock_Minute >= 60)
+  79   3                  {
+  80   4                      Clock_Minute = 0; // 分钟归零
+  81   4                      Clock_Hour++;     // 小时加1
+  82   4                      
+  83   4                      // 小时进位处理
+  84   4                      if(Clock_Hour >= 24)
+  85   4                      {
+  86   5                          Clock_Hour = 0; // 小时归零（24小时制）
+  87   5                      }
+  88   4                  }
+  89   3              }
+  90   2          }
+  91   1      }
+  92          
+  93          /**
+  94            * @brief  启动计时器计数
+  95            */
+  96          void Timer_StartCount(void)
+  97          {
+  98   1          timer_running = 1;  // 设置计时器运行标志
+  99   1      }
+ 100          
+ 101          /**
+ 102            * @brief  停止计时器计数
+ 103            */
+ 104          void Timer_StopCount(void)
+ 105          {
+ 106   1          timer_running = 0;  // 清除计时器运行标志
+ 107   1      }
+ 108          
+ 109          /**
+ 110            * @brief  重置计时器
+ 111            */
+ 112          void Timer_ResetCount(void)
+ 113          {
+ 114   1          Timer_Count = 0;      // 重置秒计数
+ 115   1          timer_ms_count = 0;   // 重置毫秒计数
+ 116   1          timer_running = 0;    // 停止计时器
+C51 COMPILER V9.54   TIMER                                                                 11/17/2025 21:07:18 PAGE 3   
+
+ 117   1      }
+ 118          
+ 119          /**
+ 120            * @brief  获取计时器运行状态
+ 121            * @retval 1=运行，0=停止
+ 122            */
+ 123          unsigned char Timer_IsRunning(void)
+ 124          {
+ 125   1          return timer_running;
+ 126   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    166    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     10    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

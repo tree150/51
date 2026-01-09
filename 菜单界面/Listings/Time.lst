@@ -1,0 +1,215 @@
+C51 COMPILER V9.54   TIME                                                                  11/16/2025 20:06:29 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE TIME
+OBJECT MODULE PLACED IN .\Objects\Time.obj
+COMPILER INVOKED BY: D:\Keil\C51\BIN\C51.EXE Time.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\Time.ls
+                    -t) TABS(2) OBJECT(.\Objects\Time.obj)
+
+line level    source
+
+   1          #include <STC89C5xRC.H>
+   2          #include "Timer.h"
+*** WARNING C318 IN LINE 2 OF Time.c: can't open file 'Timer.h'
+   3          #include "LCD1602.h"
+   4          #include "Delay.h"
+   5          
+   6          // ??????
+   7          unsigned int Timer_Count = 0;
+   8          unsigned char Clock_Hour = 12;
+   9          unsigned char Clock_Minute = 0;
+  10          unsigned char Clock_Second = 0;
+  11          unsigned char Alarm_Hour = 7;
+  12          unsigned char Alarm_Minute = 0;
+  13          bit Alarm_Enabled = 0;
+  14          bit Alarm_Triggered = 0;
+  15          
+  16          // ????LED??
+  17          sbit Buzzer = P1^1;
+  18          sbit Alarm_LED = P1^2;
+  19          
+  20          /**
+  21            * @brief  ???0???
+  22            * @param  ?
+  23            * @retval ?
+  24            */
+  25          void Timer0_Init(void)
+  26          {
+  27   1          TMOD &= 0xF0;   // ???????
+  28   1          TMOD |= 0x01;   // ???????
+  29   1          TL0 = 0x00;       // ???????
+  30   1          TH0 = 0xEE;       // ???????
+  31   1          TF0 = 0;        // ??TF0??
+  32   1          TR0 = 1;        // ???0????
+  33   1          ET0 = 1;        // ?????0??
+  34   1          EA = 1;         // ?????
+  35   1      }
+  36          
+  37          /**
+  38            * @brief  ???0??????
+  39            * @param  ?
+  40            * @retval ?
+  41            */
+  42          void Timer0_Routine() interrupt 1
+  43          {
+  44   1          static unsigned int T0Count;
+  45   1          static unsigned int ClockCount;
+  46   1          
+  47   1          TL0 = 0x00;   // ???????
+  48   1          TH0 = 0xEE;   // ???????
+  49   1          T0Count++;
+  50   1          
+  51   1          // 1ms??
+  52   1          if(T0Count >= 1)  // 1ms
+  53   1          {
+C51 COMPILER V9.54   TIME                                                                  11/16/2025 20:06:29 PAGE 2   
+
+  54   2              T0Count = 0;
+  55   2              
+  56   2              // ??????
+  57   2              ClockCount++;
+  58   2              if(ClockCount >= 1000)  // 1?
+  59   2              {
+  60   3                  ClockCount = 0;
+  61   3                  Clock_Second++;
+  62   3                  if(Clock_Second >= 60)
+  63   3                  {
+  64   4                      Clock_Second = 0;
+  65   4                      Clock_Minute++;
+  66   4                      if(Clock_Minute >= 60)
+  67   4                      {
+  68   5                          Clock_Minute = 0;
+  69   5                          Clock_Hour++;
+  70   5                          if(Clock_Hour >= 24)
+  71   5                          {
+  72   6                              Clock_Hour = 0;
+  73   6                          }
+  74   5                      }
+  75   4                  }
+  76   3                  
+  77   3                  // ????
+  78   3                  Alarm_Check();
+*** WARNING C206 IN LINE 78 OF Time.c: 'Alarm_Check': missing function-prototype
+  79   3              }
+  80   2              
+  81   2              // ??????
+  82   2              if(Alarm_Triggered)
+  83   2              {
+  84   3                  static unsigned char alarm_count = 0;
+  85   3                  alarm_count++;
+  86   3                  if(alarm_count < 100)
+  87   3                  {
+  88   4                      Buzzer = ~Buzzer;  // ????
+  89   4                      Alarm_LED = ~Alarm_LED;  // LED??
+  90   4                  }
+  91   3                  else if(alarm_count >= 200)
+  92   3                  {
+  93   4                      alarm_count = 0;
+  94   4                  }
+  95   3              }
+  96   2          }
+  97   1      }
+  98          
+  99          /**
+ 100            * @brief  ?????
+ 101            * @param  ?
+ 102            * @retval ?
+ 103            */
+ 104          void Timer_StartCount(void)
+ 105          {
+ 106   1          TR0 = 1;  // ?????
+ 107   1      }
+ 108          
+ 109          /**
+ 110            * @brief  ?????
+ 111            * @param  ?
+ 112            * @retval ?
+ 113            */
+ 114          void Timer_StopCount(void)
+C51 COMPILER V9.54   TIME                                                                  11/16/2025 20:06:29 PAGE 3   
+
+ 115          {
+ 116   1          TR0 = 0;  // ?????
+ 117   1      }
+ 118          
+ 119          /**
+ 120            * @brief  ?????
+ 121            * @param  ?
+ 122            * @retval ?
+ 123            */
+ 124          void Timer_ResetCount(void)
+ 125          {
+ 126   1          Timer_Count = 0;
+ 127   1      }
+ 128          
+ 129          /**
+ 130            * @brief  ??????
+ 131            * @param  ?
+ 132            * @retval ?
+ 133            */
+ 134          void Timer_UpdateDisplay(void)
+ 135          {
+ 136   1          // ????????
+ 137   1      }
+ 138          
+ 139          /**
+ 140            * @brief  ??????
+ 141            * @param  hour ??
+ 142            * @param  minute ??  
+ 143            * @param  second ??
+ 144            * @retval ?
+ 145            */
+ 146          void Clock_SetTime(unsigned char hour, unsigned char minute, unsigned char second)
+ 147          {
+ 148   1          Clock_Hour = hour;
+ 149   1          Clock_Minute = minute;
+ 150   1          Clock_Second = second;
+ 151   1      }
+ 152          
+ 153          /**
+ 154            * @brief  ??????
+ 155            * @param  hour ??
+ 156            * @param  minute ??
+ 157            * @retval ?
+ 158            */
+ 159          void Alarm_SetTime(unsigned char hour, unsigned char minute)
+ 160          {
+ 161   1          Alarm_Hour = hour;
+ 162   1          Alarm_Minute = minute;
+ 163   1          Alarm_Enabled = 1;  // ????
+ 164   1          Alarm_Triggered = 0;  // ??????
+ 165   1      }
+ 166          
+ 167          /**
+ 168            * @brief  ????
+ 169            * @param  ?
+ 170            * @retval ?
+ 171            */
+ 172          void Alarm_Check(void)
+ 173          {
+*** ERROR C231 IN LINE 173 OF Time.c: 'Alarm_Check': redefinition
+ 174   1          if(Alarm_Enabled && !Alarm_Triggered)
+ 175   1          {
+C51 COMPILER V9.54   TIME                                                                  11/16/2025 20:06:29 PAGE 4   
+
+ 176   2              if(Clock_Hour == Alarm_Hour && Clock_Minute == Alarm_Minute && Clock_Second == 0)
+ 177   2              {
+ 178   3                  Alarm_Triggered = 1;  // ????
+ 179   3              }
+ 180   2          }
+ 181   1      }
+*** ERROR C231 IN LINE 181 OF Time.c: 'Alarm_Check': redefinition
+ 182          
+ 183          /**
+ 184            * @brief  ????
+ 185            * @param  ?
+ 186            * @retval ?
+ 187            */
+ 188          void Alarm_Stop(void)
+ 189          {
+ 190   1          Alarm_Triggered = 0;
+ 191   1          Buzzer = 0;  // ?????
+ 192   1          Alarm_LED = 0;  // ??LED
+ 193   1      }
+
+C51 COMPILATION COMPLETE.  2 WARNING(S),  2 ERROR(S)

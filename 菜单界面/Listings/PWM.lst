@@ -1,0 +1,71 @@
+C51 COMPILER V9.54   PWM                                                                   11/17/2025 21:07:17 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE PWM
+OBJECT MODULE PLACED IN .\Objects\PWM.obj
+COMPILER INVOKED BY: D:\Keil\C51\BIN\C51.EXE PWM.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\PWM.lst)
+                    - TABS(2) OBJECT(.\Objects\PWM.obj)
+
+line level    source
+
+   1          #include <STC89C5xRC.H>
+   2          #include "PWM.h"
+   3          #include "Delay.h"
+   4          
+   5          sbit PWM_PIN = P1^5;
+   6          
+   7          unsigned char pwm_duty = 0;
+   8          unsigned char pwm_counter = 0;
+   9          unsigned int pwm_timer = 0;
+  10          
+  11          void PWM_Init(void)
+  12          {
+  13   1          PWM_PIN = 0;
+  14   1          pwm_duty = 0;
+  15   1          pwm_counter = 0;
+  16   1          pwm_timer = 0;
+  17   1      }
+  18          
+  19          void PWM_SetDuty(unsigned char duty)
+  20          {
+  21   1          if(duty > 100) duty = 100;
+  22   1          pwm_duty = duty;
+  23   1      }
+  24          
+  25          unsigned char PWM_GetDuty(void)
+  26          {
+  27   1          return pwm_duty;
+  28   1      }
+  29          
+  30          void PWM_Update(void)
+  31          {
+  32   1          pwm_timer++;
+  33   1          if(pwm_timer >= 10)  // 10msÖÜÆÚ£¬100Hz PWMÆµÂÊ
+  34   1          {
+  35   2              pwm_timer = 0;
+  36   2              pwm_counter++;
+  37   2              if(pwm_counter >= 100)
+  38   2                  pwm_counter = 0;
+  39   2                  
+  40   2              if(pwm_counter < pwm_duty)
+  41   2                  PWM_PIN = 1;
+  42   2              else
+  43   2                  PWM_PIN = 0;
+  44   2          }
+  45   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     72    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      4    ----
+   IDATA SIZE       =   ----    ----
+C51 COMPILER V9.54   PWM                                                                   11/17/2025 21:07:17 PAGE 2   
+
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

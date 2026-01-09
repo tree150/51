@@ -1,0 +1,694 @@
+C51 COMPILER V9.54   MENU                                                                  11/17/2025 21:07:17 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE MENU
+OBJECT MODULE PLACED IN .\Objects\menu.obj
+COMPILER INVOKED BY: D:\Keil\C51\BIN\C51.EXE menu.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\menu.ls
+                    -t) TABS(2) OBJECT(.\Objects\menu.obj)
+
+line level    source
+
+   1          #include <STC89C5xRC.H>
+   2          #include "LCD1602.h"
+   3          #include "Delay.h"
+   4          #include "Key.h"
+   5          #include "PWM.h"
+   6          #include "Timer.h"
+   7          #include "UART.h"
+   8          #include "menu.h"
+   9          
+  10          // 引脚定义
+  11          sbit LED = P2^0;  // LED控制引脚
+  12          
+  13          // 全局变量
+  14          unsigned char current_selection = 1;  // 当前选中的菜单项，初始为1
+  15          
+  16          // ============ 主菜单函数 ============
+  17          int menu(void)
+  18          {
+  19   1          unsigned char key = 0;  // 存储按键值
+  20   1          
+  21   1          LCD_Init();             // 初始化LCD显示
+  22   1          current_selection = 1;  // 重置当前选择为第一项
+  23   1          
+  24   1          while(1)
+  25   1          {
+  26   2              // 根据当前选择显示不同的菜单项
+  27   2              switch(current_selection)
+  28   2              {
+  29   3                  case 1: // LED选项
+  30   3                      LCD_ShowString(1,1,"*1.LED         ");      // 第一行显示，*表示选中
+  31   3                      LCD_ShowString(2,1," 2.UART 3.Timer");      // 第二行显示其他选项
+  32   3                      break;
+  33   3                  case 2: // UART选项
+  34   3                      LCD_ShowString(1,1," 1.LED         ");
+  35   3                      LCD_ShowString(2,1,"*2.UART 3.Timer");
+  36   3                      break;
+  37   3                  case 3: // Timer选项
+  38   3                      LCD_ShowString(1,1," 1.LED         ");
+  39   3                      LCD_ShowString(2,1," 2.UART*3.Timer");
+  40   3                      break;
+  41   3              }
+  42   2              
+  43   2              key = Key();  // 获取按键值
+  44   2              
+  45   2              if(key == 1) // 确认键被按下
+  46   2              {
+  47   3                  return current_selection;  // 返回当前选择的功能编号
+  48   3              }
+  49   2              else if(key == 2) // 下翻键被按下
+  50   2              {
+  51   3                  current_selection++;       // 切换到下一个选项
+  52   3                  if(current_selection > 3)  // 如果超过最大值
+  53   3                      current_selection = 1; // 回到第一个选项
+  54   3                  Delay(200);                // 延时防抖
+C51 COMPILER V9.54   MENU                                                                  11/17/2025 21:07:17 PAGE 2   
+
+  55   3              }
+  56   2              
+  57   2              Delay(50);  // 短延时，降低CPU占用
+  58   2          }
+  59   1      }
+  60          
+  61          // ============ LED功能菜单 ============
+  62          void LED_Func(void)
+  63          {
+  64   1          unsigned char key = 0;
+  65   1          unsigned char sub_selection = 1;  // 子菜单选择
+  66   1          
+  67   1          LCD_Init();  // 清屏并初始化显示
+  68   1          
+  69   1          while(1)
+  70   1          {
+  71   2              // 显示LED功能子菜单
+  72   2              switch(sub_selection)
+  73   2              {
+  74   3                  case 1: // LED开关控制
+  75   3                      LCD_ShowString(1,1,"LED Switch     ");
+  76   3                      LCD_ShowString(2,1,"*ON  OFF Back  ");
+  77   3                      break;
+  78   3                  case 2: // PWM调光控制
+  79   3                      LCD_ShowString(1,1,"PWM Control    ");
+  80   3                      LCD_ShowString(2,1,"*Adjust Back   ");
+  81   3                      break;
+  82   3                  case 3: // 返回主菜单
+  83   3                      LCD_ShowString(1,1,"Back to Main   ");
+  84   3                      LCD_ShowString(2,1,"*Yes           ");
+  85   3                      break;
+  86   3              }
+  87   2              
+  88   2              key = Key();  // 获取按键
+  89   2              
+  90   2              if(key == 1) // 确认键
+  91   2              {
+  92   3                  // 根据子菜单选择执行相应功能
+  93   3                  switch(sub_selection)
+  94   3                  {
+  95   4                      case 1: LED_Switch(); break;   // LED开关控制
+  96   4                      case 2: PWM_Control(); break;  // PWM调光控制
+  97   4                      case 3: return;                // 返回主菜单
+  98   4                  }
+  99   3                  LCD_Init();  // 功能执行完后重新初始化显示
+ 100   3              }
+ 101   2              else if(key == 2) // 下翻键
+ 102   2              {
+ 103   3                  sub_selection++;           // 切换到下一个子菜单项
+ 104   3                  if(sub_selection > 3)      // 循环选择
+ 105   3                      sub_selection = 1;
+ 106   3                  Delay(200);
+ 107   3              }
+ 108   2              else if(key == 3) // 返回键
+ 109   2              {
+ 110   3                  return;  // 直接返回主菜单
+ 111   3              }
+ 112   2              
+ 113   2              Delay(50);
+ 114   2          }
+ 115   1      }
+ 116          
+C51 COMPILER V9.54   MENU                                                                  11/17/2025 21:07:17 PAGE 3   
+
+ 117          // LED开关控制功能
+ 118          void LED_Switch(void)
+ 119          {
+ 120   1          unsigned char key = 0;
+ 121   1          unsigned char led_on = 0;  // LED状态标志，0=关，1=开
+ 122   1          
+ 123   1          LCD_Init();
+ 124   1          LED = 1;  // 初始状态：LED关闭
+ 125   1          
+ 126   1          while(1)
+ 127   1          {
+ 128   2              // 根据LED状态显示相应信息
+ 129   2              if(led_on)
+ 130   2              {
+ 131   3                  LCD_ShowString(1,1,"LED: ON        ");
+ 132   3                  LED = 0;  // 点亮LED
+ 133   3              }
+ 134   2              else
+ 135   2              {
+ 136   3                  LCD_ShowString(1,1,"LED: OFF       ");
+ 137   3                  LED = 1;  // 关闭LED
+ 138   3              }
+ 139   2              
+ 140   2              LCD_ShowString(2,1,"OK:Toggle  Back");  // 操作提示
+ 141   2              
+ 142   2              key = Key();
+ 143   2              
+ 144   2              if(key == 1) // 确认键 - 切换LED状态
+ 145   2              {
+ 146   3                  led_on = !led_on;  // 切换开关状态
+ 147   3                  Delay(200);
+ 148   3              }
+ 149   2              else if(key == 3) // 返回键
+ 150   2              {
+ 151   3                  LED = 1;  // 退出时确保LED关闭
+ 152   3                  return;
+ 153   3              }
+ 154   2              
+ 155   2              Delay(50);
+ 156   2          }
+ 157   1      }
+ 158          
+ 159          // PWM调光控制功能
+ 160          void PWM_Control(void)
+ 161          {
+ 162   1          unsigned char key = 0;
+ 163   1          unsigned char brightness = 0;  // 亮度值，0-100
+ 164   1          
+ 165   1          LCD_Init();
+ 166   1          
+ 167   1          while(1)
+ 168   1          {
+ 169   2              // 显示PWM控制界面
+ 170   2              LCD_ShowString(1,1,"PWM Control    ");
+ 171   2              LCD_ShowNum(2,1,brightness,3);  // 显示当前亮度百分比
+ 172   2              LCD_ShowString(2,4,"%   + - Back");
+ 173   2              
+ 174   2              // 简单的PWM实现：根据亮度值控制LED
+ 175   2              if(brightness > 0)
+ 176   2                  LED = 0;  // 亮度>0时点亮LED
+ 177   2              else
+ 178   2                  LED = 1;  // 亮度=0时关闭LED
+C51 COMPILER V9.54   MENU                                                                  11/17/2025 21:07:17 PAGE 4   
+
+ 179   2              
+ 180   2              key = Key();
+ 181   2              
+ 182   2              if(key == 1) // 确认键 - 增加亮度
+ 183   2              {
+ 184   3                  if(brightness < 100)
+ 185   3                      brightness += 10;  // 每次增加10%
+ 186   3                  Delay(150);
+ 187   3              }
+ 188   2              else if(key == 2) // 下翻键 - 减少亮度
+ 189   2              {
+ 190   3                  if(brightness > 0)
+ 191   3                      brightness -= 10;  // 每次减少10%
+ 192   3                  Delay(150);
+ 193   3              }
+ 194   2              else if(key == 3) // 返回键
+ 195   2              {
+ 196   3                  LED = 1;  // 退出时关闭LED
+ 197   3                  return;
+ 198   3              }
+ 199   2              
+ 200   2              Delay(100);
+ 201   2          }
+ 202   1      }
+ 203          
+ 204          // ============ UART功能菜单 ============
+ 205          void UART_Func(void)
+ 206          {
+ 207   1          unsigned char key = 0;
+ 208   1          unsigned char sub_selection = 1;
+ 209   1          
+ 210   1          LCD_Init();
+ 211   1          UART_Init();  // 初始化串口
+ 212   1          
+ 213   1          while(1)
+ 214   1          {
+ 215   2              // 显示UART功能子菜单
+ 216   2              switch(sub_selection)
+ 217   2              {
+ 218   3                  case 1: // 发送模式
+ 219   3                      LCD_ShowString(1,1,"UART Send      ");
+ 220   3                      LCD_ShowString(2,1,"*Send Msg      ");
+ 221   3                      break;
+ 222   3                  case 2: // 接收模式
+ 223   3                      LCD_ShowString(1,1,"UART Receive   ");
+ 224   3                      LCD_ShowString(2,1,"*Show Data     ");
+ 225   3                      break;
+ 226   3                  case 3: // 返回主菜单
+ 227   3                      LCD_ShowString(1,1,"Back to Main   ");
+ 228   3                      LCD_ShowString(2,1,"*Yes           ");
+ 229   3                      break;
+ 230   3              }
+ 231   2              
+ 232   2              key = Key();
+ 233   2              
+ 234   2              if(key == 1) // 确认键
+ 235   2              {
+ 236   3                  switch(sub_selection)
+ 237   3                  {
+ 238   4                      case 1: UART_SendMenu(); break;     // 串口发送菜单
+ 239   4                      case 2: UART_ReceiveMenu(); break;  // 串口接收菜单
+ 240   4                      case 3: return;                     // 返回主菜单
+C51 COMPILER V9.54   MENU                                                                  11/17/2025 21:07:17 PAGE 5   
+
+ 241   4                  }
+ 242   3                  LCD_Init();
+ 243   3              }
+ 244   2              else if(key == 2) // 下翻键
+ 245   2              {
+ 246   3                  sub_selection++;
+ 247   3                  if(sub_selection > 3) 
+ 248   3                      sub_selection = 1;
+ 249   3                  Delay(150);
+ 250   3              }
+ 251   2              else if(key == 3) // 返回键
+ 252   2              {
+ 253   3                  return;
+ 254   3              }
+ 255   2              
+ 256   2              Delay(50);
+ 257   2          }
+ 258   1      }
+ 259          
+ 260          // UART发送菜单 - 针对ISP串口助手优化
+ 261          void UART_SendMenu(void)
+ 262          {
+ 263   1          unsigned char key = 0;
+ 264   1          unsigned char msg_selection = 1;
+ 265   1          
+ 266   1          LCD_Init();
+ 267   1          
+ 268   1          while(1)
+ 269   1          {
+ 270   2              LCD_ShowString(1,1,"Send to ISP:    ");
+ 271   2              
+ 272   2              switch(msg_selection)
+ 273   2              {
+ 274   3                  case 1:
+ 275   3                      LCD_ShowString(2,1,">Hello World   ");
+ 276   3                      break;
+ 277   3                  case 2:
+ 278   3                      LCD_ShowString(2,1,">MCU Info      ");
+ 279   3                      break;
+ 280   3                  case 3:
+ 281   3                      LCD_ShowString(2,1,">Test Data     ");
+ 282   3                      break;
+ 283   3                  case 4:
+ 284   3                      LCD_ShowString(2,1,">Counter       ");
+ 285   3                      break;
+ 286   3                  case 5:
+ 287   3                      LCD_ShowString(2,1,">Back          ");
+ 288   3                      break;
+ 289   3              }
+ 290   2              
+ 291   2              key = Key();
+ 292   2              
+ 293   2              if(key == 1) // 确认键 - 发送选中的消息
+ 294   2              {
+ 295   3                  switch(msg_selection)
+ 296   3                  {
+ 297   4                      case 1:
+ 298   4                          UART_SendString("Hello from STC89C52!");
+ 299   4                          LCD_ShowString(1,1,"Sent: Hello    ");
+ 300   4                          Delay(800);
+ 301   4                          break;
+ 302   4                      case 2:
+C51 COMPILER V9.54   MENU                                                                  11/17/2025 21:07:17 PAGE 6   
+
+ 303   4                          UART_SendString("MCU: STC89C52RC");
+ 304   4                          UART_SendString("Freq: 11.0592MHz");
+ 305   4                          UART_SendString("UART: 9600 8N1");
+ 306   4                          LCD_ShowString(1,1,"Sent: MCU Info ");
+ 307   4                          Delay(800);
+ 308   4                          break;
+ 309   4                      case 3:
+ 310   4                          UART_SendString("Test Message 123");
+ 311   4                          UART_SendString("ABCDEFGHIJKLMNOP");
+ 312   4                          LCD_ShowString(1,1,"Sent: Test Data");
+ 313   4                          Delay(800);
+ 314   4                          break;
+ 315   4                      case 4:
+ 316   4                      {
+ 317   5                          static unsigned char counter = 0;  // 正确：在代码块中声明
+ 318   5                          UART_SendString("Counter: ");
+ 319   5                          UART_SendNumber(counter++);
+ 320   5                          LCD_ShowString(1,1,"Sent: Counter  ");
+ 321   5                          Delay(800);
+ 322   5                      }
+ 323   4                      break;
+ 324   4                      case 5:
+ 325   4                      return;
+ 326   4                  }
+ 327   3              }
+ 328   2              else if(key == 2) // 下翻键 - 切换消息
+ 329   2              {
+ 330   3                  msg_selection++;
+ 331   3                  if(msg_selection > 5) 
+ 332   3                      msg_selection = 1;
+ 333   3                  Delay(150);
+ 334   3              }
+ 335   2              else if(key == 3) // 返回键
+ 336   2              {
+ 337   3                  return;
+ 338   3              }
+ 339   2              
+ 340   2              Delay(50);
+ 341   2          }
+ 342   1      }
+ 343          
+ 344          // UART接收菜单 - 针对ISP串口助手优化
+ 345          void UART_ReceiveMenu(void)
+ 346          {
+ 347   1          unsigned char key = 0;
+ 348   1          unsigned char display_mode = 0; // 0:等待, 1:显示数据
+ 349   1          
+ 350   1          LCD_Init();
+ 351   1          UART_ClearBuffer();
+ 352   1          
+ 353   1          while(1)
+ 354   1          {
+ 355   2              switch(display_mode)
+ 356   2              {
+ 357   3                  case 0: // 等待模式
+ 358   3                      LCD_ShowString(1,1,"UART Receive   ");
+ 359   3                      LCD_ShowString(2,1,"OK:Start Back  ");
+ 360   3                      
+ 361   3                      // 检查是否有数据
+ 362   3                      if(UART_HasCompleteLine())
+ 363   3                      {
+ 364   4                          LCD_ShowString(1,1,"Data Ready!    ");
+C51 COMPILER V9.54   MENU                                                                  11/17/2025 21:07:17 PAGE 7   
+
+ 365   4                      }
+ 366   3                      break;
+ 367   3                      
+ 368   3                  case 1: // 显示模式
+ 369   3                      UART_DisplayData();
+ 370   3                      LCD_ShowString(2,1,"OK:Clear Back  ");
+ 371   3                      break;
+ 372   3              }
+ 373   2              
+ 374   2              key = Key();
+ 375   2              
+ 376   2              if(key == 1) // 确认键
+ 377   2              {
+ 378   3                  if(display_mode == 0)
+ 379   3                  {
+ 380   4                      display_mode = 1; // 进入显示模式
+ 381   4                  }
+ 382   3                  else if(display_mode == 1)
+ 383   3                  {
+ 384   4                      UART_ClearBuffer();
+ 385   4                      LCD_ShowString(1,1,"Buffer Cleared! ");
+ 386   4                      LCD_ShowString(2,1,"                ");
+ 387   4                      Delay(800);
+ 388   4                      display_mode = 0;
+ 389   4                      LCD_Init();
+ 390   4                  }
+ 391   3              }
+ 392   2              else if(key == 3) // 返回键
+ 393   2              {
+ 394   3                  return;
+ 395   3              }
+ 396   2              
+ 397   2              // 自动检测新数据
+ 398   2              if(UART_HasCompleteLine() && display_mode == 1)
+ 399   2              {
+ 400   3                  LCD_Init();
+ 401   3                  LCD_ShowString(1,1,"New Data!       ");
+ 402   3                  Delay(500);
+ 403   3                  LCD_Init();
+ 404   3              }
+ 405   2              
+ 406   2              Delay(100);
+ 407   2          }
+ 408   1      }
+ 409          
+ 410          // 显示接收数据 - 针对ISP串口助手优化
+ 411          void UART_DisplayData(void)
+ 412          {
+ 413   1          unsigned char i;
+ 414   1          
+ 415   1          if(UART_HasCompleteLine())
+ 416   1          {
+ 417   2              char* buffer = UART_GetBuffer();
+ 418   2              
+ 419   2              LCD_ShowString(1,1,"Received:       ");
+ 420   2              
+ 421   2              // 显示第一行（最多16字符）
+ 422   2              for(i = 0; i < 16 && buffer[i] != '\0'; i++)
+ 423   2              {
+ 424   3                  if(buffer[i] >= 32 && buffer[i] <= 126) // 可显示字符
+ 425   3                  {
+ 426   4                      LCD_ShowChar(1, 10 + i, buffer[i]);
+C51 COMPILER V9.54   MENU                                                                  11/17/2025 21:07:17 PAGE 8   
+
+ 427   4                  }
+ 428   3                  else
+ 429   3                  {
+ 430   4                      LCD_ShowChar(1, 10 + i, '.'); // 非显示字符用点代替
+ 431   4                  }
+ 432   3              }
+ 433   2              
+ 434   2              // 显示第二行（如果有更多数据）
+ 435   2              if(buffer[16] != '\0')
+ 436   2              {
+ 437   3                  for(i = 16; i < 32 && buffer[i] != '\0'; i++)
+ 438   3                  {
+ 439   4                      if(buffer[i] >= 32 && buffer[i] <= 126)
+ 440   4                      {
+ 441   5                          LCD_ShowChar(2, i-15, buffer[i]);
+ 442   5                      }
+ 443   4                      else
+ 444   4                      {
+ 445   5                          LCD_ShowChar(2, i-15, '.');
+ 446   5                      }
+ 447   4                  }
+ 448   3              }
+ 449   2              else
+ 450   2              {
+ 451   3                  LCD_ShowString(2,1,"                ");
+ 452   3              }
+ 453   2          }
+ 454   1          else
+ 455   1          {
+ 456   2              // 显示等待信息
+ 457   2              static unsigned char wait_count = 0;
+ 458   2              wait_count++;
+ 459   2              
+ 460   2              LCD_ShowString(1,1,"Waiting Data... ");
+ 461   2              
+ 462   2              if(wait_count < 20)
+ 463   2                  LCD_ShowString(2,1,"[#             ]");
+ 464   2              else if(wait_count < 40)
+ 465   2                  LCD_ShowString(2,1,"[##            ]");
+ 466   2              else if(wait_count < 60)
+ 467   2                  LCD_ShowString(2,1,"[###           ]");
+ 468   2              else
+ 469   2                  wait_count = 0;
+ 470   2          }
+ 471   1      }
+ 472          
+ 473          // ============ Timer功能菜单 ============
+ 474          void Timer_Func(void)
+ 475          {
+ 476   1          unsigned char key = 0;
+ 477   1          unsigned char sub_selection = 1;
+ 478   1          
+ 479   1          LCD_Init();
+ 480   1          Timer0_Init();  // 初始化定时器0
+ 481   1          
+ 482   1          while(1)
+ 483   1          {
+ 484   2              // 显示定时器功能子菜单
+ 485   2              switch(sub_selection)
+ 486   2              {
+ 487   3                  case 1: // 计时器
+ 488   3                      LCD_ShowString(1,1,"Timer Counter  ");
+C51 COMPILER V9.54   MENU                                                                  11/17/2025 21:07:17 PAGE 9   
+
+ 489   3                      LCD_ShowString(2,1,"*Start/Stop    ");
+ 490   3                      break;
+ 491   3                  case 2: // 时钟系统
+ 492   3                      LCD_ShowString(1,1,"Clock System   ");
+ 493   3                      LCD_ShowString(2,1,"*Show Time     ");
+ 494   3                      break;
+ 495   3                  case 3: // 返回主菜单
+ 496   3                      LCD_ShowString(1,1,"Back to Main   ");
+ 497   3                      LCD_ShowString(2,1,"*Yes           ");
+ 498   3                      break;
+ 499   3              }
+ 500   2              
+ 501   2              key = Key();
+ 502   2              
+ 503   2              if(key == 1) // 确认键
+ 504   2              {
+ 505   3                  switch(sub_selection)
+ 506   3                  {
+ 507   4                      case 1: Timer_Counter(); break;  // 计时器功能
+ 508   4                      case 2: Clock_System(); break;   // 时钟系统功能
+ 509   4                      case 3: return;                  // 返回主菜单
+ 510   4                  }
+ 511   3                  LCD_Init();
+ 512   3              }
+ 513   2              else if(key == 2) // 下翻键
+ 514   2              {
+ 515   3                  sub_selection++;
+ 516   3                  if(sub_selection > 3) 
+ 517   3                      sub_selection = 1;
+ 518   3                  Delay(200);
+ 519   3              }
+ 520   2              else if(key == 3) // 返回键
+ 521   2              {
+ 522   3                  return;
+ 523   3              }
+ 524   2              
+ 525   2              Delay(50);
+ 526   2          }
+ 527   1      }
+ 528          
+ 529          // 计时器功能
+ 530          void Timer_Counter(void)
+ 531          {
+ 532   1          unsigned char key = 0;
+ 533   1          unsigned int seconds = 0;          // 当前秒数
+ 534   1          unsigned int last_seconds = 0;     // 上次显示的秒数
+ 535   1          unsigned char running = 0;         // 运行状态
+ 536   1          
+ 537   1          LCD_Init();
+ 538   1          
+ 539   1          // 获取当前计时器状态
+ 540   1          running = Timer_IsRunning();
+ 541   1          seconds = Timer_Count;
+ 542   1          
+ 543   1          while(1)
+ 544   1          {
+ 545   2              seconds = Timer_Count;  // 获取当前计时值
+ 546   2              
+ 547   2              // 只有当秒数变化时才更新显示，避免闪烁
+ 548   2              if(seconds != last_seconds)
+ 549   2              {
+ 550   3                  // 显示计时器界面
+C51 COMPILER V9.54   MENU                                                                  11/17/2025 21:07:17 PAGE 10  
+
+ 551   3                  LCD_ShowString(1,1,"Timer:         ");
+ 552   3                  LCD_ShowNum(1,7,seconds/60,2);   // 显示分钟
+ 553   3                  LCD_ShowChar(1,9,':');
+ 554   3                  LCD_ShowNum(1,10,seconds%60,2);  // 显示秒钟
+ 555   3                  
+ 556   3                  // 显示运行状态
+ 557   3                  if(running)
+ 558   3                  {
+ 559   4                      LCD_ShowString(1,13,"Run");  // 运行中
+ 560   4                  }
+ 561   3                  else
+ 562   3                  {
+ 563   4                      LCD_ShowString(1,13,"Stop"); // 已停止
+ 564   4                  }
+ 565   3                  
+ 566   3                  last_seconds = seconds;
+ 567   3              }
+ 568   2              
+ 569   2              // 显示控制选项
+ 570   2              if(running)
+ 571   2              {
+ 572   3                  LCD_ShowString(2,1,"Stop  Reset Back");
+ 573   3              }
+ 574   2              else
+ 575   2              {
+ 576   3                  LCD_ShowString(2,1,"Start Reset Back");
+ 577   3              }
+ 578   2              
+ 579   2              key = Key();
+ 580   2              
+ 581   2              if(key == 1) // 确认键 - 开始/停止计时
+ 582   2              {
+ 583   3                  if(running)
+ 584   3                  {
+ 585   4                      Timer_StopCount();     // 停止计时
+ 586   4                      running = 0;
+ 587   4                  }
+ 588   3                  else
+ 589   3                  {
+ 590   4                      Timer_StartCount();    // 开始计时
+ 591   4                      running = 1;
+ 592   4                  }
+ 593   3                  Delay(200);
+ 594   3              }
+ 595   2              else if(key == 2) // 下翻键 - 重置计时器
+ 596   2              {
+ 597   3                  Timer_ResetCount();        // 重置计时器
+ 598   3                  seconds = 0;
+ 599   3                  running = 0;
+ 600   3                  last_seconds = 0;          // 强制更新显示
+ 601   3                  Delay(200);
+ 602   3              }
+ 603   2              else if(key == 3) // 返回键
+ 604   2              {
+ 605   3                  // 注意：退出时不停止计时器，保持当前状态
+ 606   3                  // 下次进入时可以继续计时
+ 607   3                  return;
+ 608   3              }
+ 609   2              
+ 610   2              Delay(100);
+ 611   2          }
+ 612   1      }
+C51 COMPILER V9.54   MENU                                                                  11/17/2025 21:07:17 PAGE 11  
+
+ 613          
+ 614          // 时钟系统功能
+ 615          void Clock_System(void)
+ 616          {
+ 617   1          unsigned char key = 0;
+ 618   1          unsigned char last_second = 255;  // 记录上次显示的秒数
+ 619   1          
+ 620   1          LCD_Init();
+ 621   1          Timer_StartCount();  // 启动时钟计时
+ 622   1          
+ 623   1          while(1)
+ 624   1          {
+ 625   2              // 只有当秒数变化时才更新显示，避免闪烁
+ 626   2              if(Clock_Second != last_second)
+ 627   2              {
+ 628   3                  // 显示当前时间（时:分:秒）
+ 629   3                  LCD_ShowString(1,1,"Time: ");
+ 630   3                  LCD_ShowNum(1,7,Clock_Hour,2);     // 小时
+ 631   3                  LCD_ShowChar(1,9,':');
+ 632   3                  LCD_ShowNum(1,10,Clock_Minute,2);  // 分钟
+ 633   3                  LCD_ShowChar(1,12,':');
+ 634   3                  LCD_ShowNum(1,13,Clock_Second,2);  // 秒钟
+ 635   3                  last_second = Clock_Second;
+ 636   3              }
+ 637   2              
+ 638   2              LCD_ShowString(2,1,"Back to Menu   ");  // 操作提示
+ 639   2              
+ 640   2              key = Key();
+ 641   2              
+ 642   2              if(key == 3) // 返回键
+ 643   2              {
+ 644   3                  Timer_StopCount();  // 停止时钟计时
+ 645   3                  return;
+ 646   3              }
+ 647   2              
+ 648   2              Delay(100);
+ 649   2          }
+ 650   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   2024    ----
+   CONSTANT SIZE    =    905    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      3      27
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
